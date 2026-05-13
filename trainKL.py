@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 # 导入自定义模块
 from dataset import *
-from demo02 import *
+from model import *
 from utils import *
 
 import os
