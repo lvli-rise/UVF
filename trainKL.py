@@ -10,14 +10,13 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from torchmetrics import Precision, Recall, F1Score
 from torch.utils.data import DataLoader, TensorDataset
 
-# 导入自定义模块
+
 from dataset import *
 from model import *
 from utils import *
 
 import os
 
-# 只使用第 0 块 GPU
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def set_seed(seed=42):
@@ -32,7 +31,7 @@ def set_seed(seed=42):
 
 set_seed(12)
 
-# 检查GPU是否可用
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 config = {}
