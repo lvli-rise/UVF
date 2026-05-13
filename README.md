@@ -24,3 +24,25 @@ To address this limitation, we propose a novel framework called Uncertainty-Guid
 <div align="center">
   <img src="UVF_model.png" />
 </div>
+
+## 📊Datasets
+For convenient access to all datasets used in this work, please refer to the <a href="https://github.com/LiShuailzn/Neurips-2025-EFB-EMVC">EFB-EMVC</a>  repository, which provides download links and preprocessing scripts for all datasets.
+
+| Dataset | Views | Samples | Classes | Description |
+|---|---:|---:|---:|---|
+| AWA | 7 | 30,475 | 50 | Animals with Attributes |
+| NUS-WIDE | 7 | 23,438 | 10 | Multi-view image dataset |
+| Reuters | 5 | 111,740 | 6 | Multilingual text dataset |
+| MVoxCeleb | 5 | 153,516 | 1,251 | Audio-visual speaker verification |
+| YoutubeFace | 5 | 101,499 | 31 | Face video dataset |
+
+## Parameter settings
+| Parameter | Value |
+|---|---:|
+| Latent dimension ($d$) | 128 |
+| Learning rate | 0.001 |
+| Batch size | 64, 128 |
+| Training epochs | 100 |
+| $(\lambda_1, \lambda_2)$ (PU, CU) | (0.8, 0.2), (0.6, 0.4) |
+| $\lambda$ (in loss) | 0.01 |
+| $\beta$ (in loss) | 0.1 |
