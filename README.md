@@ -46,3 +46,17 @@ For convenient access to all datasets used in this work, please refer to the <a 
 | $(\lambda_1, \lambda_2)$ (PU, CU) | (0.8, 0.2), (0.6, 0.4) |
 | $\lambda$ (in loss) | 0.01 |
 | $\beta$ (in loss) | 0.1 |
+
+## 📑Citation
+If you find this repository useful, please cite our paper:
+```
+@inproceedings{lv2026uncertainty,
+  title={Uncertainty-Guided View-Strength-Aware Feature Utilization for Multi-View Classification},
+  author={Lv, Li and Guo, Qian and Zhang, Li and Du, Liang and Jiang, Bingbing and Chen, Lu and Liang, Xinyan},
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence, {AAAI-26}},
+  volume={40},
+  number={29},
+  pages={24198--24206},
+  year={2026}
+}
+```
