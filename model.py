@@ -54,20 +54,10 @@ class UVF(nn.Module):
         wq2_normalized = wq2 / wq2.sum()
 
         fused_weights = self.fused_weight(CU_weights, wq2_normalized, lambda1 = 1.0, lambda2 = 0)
-
-
-        # wq2_normalized = (wq2 - wq2.min()) / (wq2.max() - wq2.min() + 1e-8)
-
-        threshold = 5
+        
         all = 0
-        ppppp = []
         for i in range(self.view_nums):
-            if i < threshold:
-                all += fused_weights[i] * selected_features[i]
-                ppppp.append(fused_weights[i] * selected_features[i])
-            else :
-                all += selected_features[i]
-
+            all += fused_weights[i] * selected_features[i]
         return all, gate_masks, input, output
 
 
