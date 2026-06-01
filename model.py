@@ -74,22 +74,18 @@ class UVF(nn.Module):
 
 
     def enable_dropout(self, model):
-        """ 启用 Dropout 层用于 MC Dropout 推理 """
+        
         for m in model.modules():
             if isinstance(m, nn.Dropout):
                 m.train()
 
     def compute_uncertainty(self, model, z_v, T=20):
-        """
-        model: 单个视图的分类器（含 Dropout）
-        z_v: 当前视图的输入特征 [B, D]
-        T: MC Dropout 次数
-        """
+        
         model.eval()
         self.enable_dropout(model)
 
-        preds = []  # 存储每次预测
-        with torch.no_grad():  # 推理时禁用梯度
+        preds = []  
+        with torch.no_grad():  
             for _ in range(T):
                 output = model(z_v)  # [B, C]
                 prob = F.softmax(output, dim=-1)
@@ -98,9 +94,7 @@ class UVF(nn.Module):
         preds = torch.cat(preds, dim=0)  # [T, B, C]
         mean_pred = preds.mean(dim=0)  # [B, C]
         var_pred = preds.var(dim=0)  # [B, C]
-        # print(var_pred)
-
-        # ----- 认知不确定性（CU） -----
+       
         CU = var_pred.sum(dim=1)  # [B]
         CU = CU.mean()
 
@@ -115,7 +109,7 @@ class UVF(nn.Module):
             cu_scores.append(CU.unsqueeze(0))  # [B, 1]
 
         cu_scores = torch.cat(cu_scores, dim=0)  # [B, V]
-        weights = torch.softmax(-cu_scores, dim=0)  # 不确定性越大，权重越小
+        weights = torch.softmax(-cu_scores, dim=0)  
 
         return weights
 
@@ -124,27 +118,6 @@ class UVF(nn.Module):
         us = us / us.sum()
         return us
 
-    def zhu(self, fused_weights, name):
-        fused_weights = fused_weights.detach().cpu().numpy()  # 转为 numpy array
-
-        # 创建柱状图
-        views = np.arange(1, len(fused_weights) + 1)  # [1, 2, ..., V]
-        plt.figure(figsize=(10, 8))
-        plt.bar(views, fused_weights, color='skyblue')
-
-        # 添加标签和标题
-        plt.xlabel("View Index", fontsize=18)
-        plt.ylabel("Fused Weight", fontsize=18)
-        plt.title("Fused Weights per View", fontsize=18)
-        plt.xticks(views, fontsize=18)  # 设置 x 轴刻度为 1 到 V
-
-        plt.yticks(fontsize=18)  # y轴刻度数字变大
-
-        # 显示数值标签
-        for i, weight in enumerate(fused_weights):
-            plt.text(views[i], weight + 0.01, f"{weight:.2f}", ha='center', va='bottom')
-
-        plt.savefig(f'./pig/{name}.pdf', dpi=300)
 
 
 
