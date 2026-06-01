@@ -14,7 +14,7 @@ class UVF(nn.Module):
         super(UVF, self).__init__()
 
 
-        self.dim = 256
+        self.dim = 128
         self.label_nums = config['num_class']
         self.view_nums = config['view_nums']
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
