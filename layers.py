@@ -1,41 +1,26 @@
-import numpy as np
+
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 class LearnModel(nn.Module):
-    def __init__(self, input_size):
+    def __init__(self, input_size, output_dim=256):
         super(LearnModel, self).__init__()
-        self.input_sizes = input_size
-        self.weidu = 128
-        self.device = torch.device('cuda')
-        self.fc_view1 = nn.Linear(input_size[0], self.weidu)
-        self.fc_view2 = nn.Linear(input_size[1], self.weidu)
-        self.fc_view3 = nn.Linear(input_size[2], self.weidu)
-        self.fc_view4 = nn.Linear(input_size[3], self.weidu)
-        self.fc_view5 = nn.Linear(input_size[4], self.weidu)
-        # self.fc_view6 = nn.Linear(input_size[5], self.next)
-        # self.fc_view7 = nn.Linear(input_size[6], self.next)
-        # self.fc = nn.ModuleList([
-        #     nn.Sequential(
-        #         nn.Linear(dim, self.weidu)
-        #     )
-        #     for dim in input_size
-        # ])
+        self.input_sizes = list(input_size)
+        self.dim = output_dim
+        self.view_names = [f"view{i + 1}" for i in range(len(self.input_sizes))]
+        self.projections = nn.ModuleList([
+            nn.Linear(in_dim, self.dim) for in_dim in self.input_sizes
+        ])
 
     def forward(self, x):
+        missing_views = [name for name in self.view_names if name not in x]
+        if missing_views:
+            raise KeyError(f"Missing input views: {missing_views}")
 
-        x1 = self.fc_view1(x["view1"])
-        x2 = self.fc_view2(x["view2"])
-        x3 = self.fc_view3(x["view3"])
-        x4 = self.fc_view4(x["view4"])
-        x5 = self.fc_view5(x["view5"])
-        # x6 = self.fc_view6(x["view6"])
-        # x7 = self.fc_view7(x["view7"])
-        tmp = [x1, x2, x3, x4, x5]
-        # tmp = [x1, x2, x3, x4, x5, x6, x7]
-        # outs = [fc_demo(view) for fc_demo, view in zip(self.fc, x.values())]
-        return tmp
+        return [
+            projection(x[name])
+            for name, projection in zip(self.view_names, self.projections)
+        ]
 
 
 class DifferentiatedFeatureSelector(nn.Module):
@@ -51,10 +36,6 @@ class DifferentiatedFeatureSelector(nn.Module):
         )
 
     def forward(self, x):
-        """
-        x: [batch_size, input_dim]
-        strength: [batch_size, 1]
-        """
         gate = self.gate_net(x)
         x_selected = gate * x
         return x_selected, gate
@@ -71,15 +52,10 @@ class MultiViewFeatureSelector(nn.Module):
         self.fusion_layer = nn.Linear(input_dim * num_views, input_dim)  # 可根据任务调整
 
     def forward(self, views, strengths):
-        """
-        views: list of tensors, each [batch_size, input_dim]
-        strengths: list of tensors, each [batch_size, 1]
-        """
         selected_features = []
         gate_masks = []
         sorted_indices = torch.argsort(strengths)
-        tmp = strengths[sorted_indices[4]]
-        # tmp = 0
+        tmp = strengths[sorted_indices[0]]
         for i in range(self.num_views):
             if strengths[i] <= tmp:
                 z, g = self.selectors[i](views[i])
@@ -112,7 +88,7 @@ class MultiViewClass_Droupout(nn.Module):
         self.cls = nn.Sequential(
             nn.BatchNorm1d(input_dim),
             nn.ReLU(),
-            nn.Dropout(p=0.5),  # 加入Dropout层，p是丢弃概率
+            nn.Dropout(p=0.5),
             nn.Linear(input_dim, label_nums),
         )
 

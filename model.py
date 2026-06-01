@@ -13,32 +13,28 @@ class UVF(nn.Module):
     def __init__(self, config):
         super(UVF, self).__init__()
 
-        # 将不同视图的维度统一
-        self.weidu = 128
+
+        self.dim = 256
         self.label_nums = config['num_class']
         self.view_nums = config['view_nums']
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.Learn_model = LearnModel(config['input_size'])
-        self.multi_cls = nn.ModuleList([MultiViewClass(self.label_nums, self.weidu) for _ in range(self.view_nums)])
-        self.multi_cls2 = nn.ModuleList([MultiViewClass(self.label_nums, self.weidu) for _ in range(self.view_nums)])
-        self.multi_cls_CU = nn.ModuleList([MultiViewClass_Droupout(self.label_nums, self.weidu) for _ in range(self.view_nums)])
-        self.selcetor_model = MultiViewFeatureSelector(input_dim=self.weidu, num_views=self.view_nums)
-        self.fc_view1 = nn.Linear(self.weidu, 64)
+        self.multi_cls = nn.ModuleList([MultiViewClass(self.label_nums, self.dim) for _ in range(self.view_nums)])
+        self.multi_cls2 = nn.ModuleList([MultiViewClass(self.label_nums, self.dim) for _ in range(self.view_nums)])
+        self.multi_cls_CU = nn.ModuleList([MultiViewClass_Droupout(self.label_nums, self.dim) for _ in range(self.view_nums)])
+        self.selcetor_model = MultiViewFeatureSelector(input_dim=self.dim, num_views=self.view_nums)
+        self.fc_view1 = nn.Linear(self.dim, 64)
 
 
 
     def forward(self, x, train):
         input = self.Learn_model(x)
-
         os.makedirs('./pig', exist_ok=True)
-
         wq = []
-
         for i in range(self.view_nums):
             te_z = self.multi_cls[i](input[i])
             w = self.DM(te_z, self.label_nums)
             wq.append(w)
-
         wq = torch.stack(wq)
         output, gate_masks = self.selcetor_model(input, wq)
 
@@ -53,53 +49,29 @@ class UVF(nn.Module):
         wq2 = torch.stack(wq2)
         wq2_normalized = wq2 / wq2.sum()
 
-        fused_weights = self.fused_weight(CU_weights, wq2_normalized, lambda1 = 1.0, lambda2 = 0)
-        
+        fused_weights = self.fused_weight(CU_weights, wq2_normalized, lambda1 = 0.8, lambda2 = 0.2)
+
         all = 0
         for i in range(self.view_nums):
             all += fused_weights[i] * selected_features[i]
-        return all, gate_masks, input, output
 
+        return all, gate_masks, input, output
 
 
     def DM(self, fm, label_num):
 
         softmax_outputs = F.softmax(fm, dim=1)
         mu = 1 / label_num
-
-
         abs_diff = torch.abs(softmax_outputs - mu)
-
-
         loss = torch.mean(abs_diff)
         return loss
 
     def Adj(self, features):
-        # 先做归一化（保证每行向量模长为1）
         features_norm = F.normalize(features, p=2, dim=1)  # 在特征维上做L2归一化
-        # 计算余弦相似度（矩阵乘法）
         adjacency_matrix = torch.mm(features_norm, features_norm.t())  # [128, 128]
-
         return  adjacency_matrix
 
 
-    def toPig(self, temp, i):
-        # 将 temp 从 CUDA 或张量形式转换为 CPU numpy 格式
-        temp_np = temp.detach().cpu().numpy()
-
-        # 绘制热力图
-        plt.imshow(temp_np, cmap='Blues', interpolation='nearest')
-        # plt.xlabel("dimension", fontsize=20)
-        # plt.ylabel("batch-size", fontsize=20)
-        plt.xticks(fontsize=16)  # 设置 x 轴刻度字体大小
-        plt.yticks(fontsize=16)  # 设置 y 轴刻度字体大小
-
-        cbar = plt.colorbar()  # 添加颜色条
-        cbar.ax.tick_params(labelsize=16)  # 设置颜色条刻度字体大小
-        plt.title('')
-        # 保存热力图为图像文件
-        plt.savefig(f'./pig/{i}.pdf')
-        plt.close()
 
     def enable_dropout(self, model):
         """ 启用 Dropout 层用于 MC Dropout 推理 """
@@ -135,11 +107,6 @@ class UVF(nn.Module):
         return CU
 
     def uncertainty_weighted_fusion(self, z_list, model_list):
-        """
-        z_list: 多个视图的特征列表 [ [B, D1], [B, D2], ..., ]
-        model_list: 每个视图对应的分类器（含 Dropout）
-        返回加权融合后的特征
-        """
         assert len(z_list) == len(model_list)
         cu_scores = []
 
@@ -150,7 +117,7 @@ class UVF(nn.Module):
         cu_scores = torch.cat(cu_scores, dim=0)  # [B, V]
         weights = torch.softmax(-cu_scores, dim=0)  # 不确定性越大，权重越小
 
-        return weights  # 返回加权融合的特征和视图权重
+        return weights
 
     def fused_weight(self, CU, PU, lambda1=0.9, lambda2=0.1):
         us = lambda1 * PU + lambda2 * CU
